@@ -13,6 +13,8 @@ type Shape = {
   rotation: number;
 };
 
+import modelUrl from "./models/box.glb";
+
 export default function RectEditor() {
   const wrapRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<any>(null);
@@ -204,7 +206,8 @@ export default function RectEditor() {
       // GLB モデルを追加
       await map.addModel(
         "duck-model",
-        "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/Duck/glTF-Binary/Duck.glb"
+        // "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/Duck/glTF-Binary/Duck.glb"
+        modelUrl
       );
       // .catch((err) => console.log(err));
 
@@ -214,7 +217,7 @@ export default function RectEditor() {
     // return () => map?.remove();
   }, [mapRef2]);
 
-  const scale = 100;
+  const scale = 5000;
 
   // 🟦 polygons からモデル GeoJSON を生成
   const modelsGeoJson = {
