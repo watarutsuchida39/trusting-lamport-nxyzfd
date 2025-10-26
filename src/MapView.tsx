@@ -3,7 +3,6 @@ import type { MapProps } from "react-map-gl/mapbox";
 // import Map from 'react-map-gl/mapbox';
 import "mapbox-gl/dist/mapbox-gl.css";
 import React, { memo, useEffect } from "react";
-import { useWindowDimensions } from "react-native";
 
 const MapView = memo((props: MapProps) => {
   //   const isMobile = useWindowDimensions().width < 600;
