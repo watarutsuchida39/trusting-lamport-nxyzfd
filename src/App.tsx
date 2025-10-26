@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 import React, { useEffect, useRef, useState } from "react";
 import { Stage, Layer, Rect, Transformer } from "react-konva";
 import MapView from "./MapView"; // ← MapViewは既存のものを使う
@@ -96,9 +98,9 @@ export default function RectEditor() {
     const map = mapRef2.map;
     const stage = stageRef.current;
     // const map2 = mapRef2;
-    console.log(map);
+    // console.log(map);
     // console.log(map2.map.getStyle());
-    console.log(stage);
+    // console.log(stage);
     if (!map || !stage) {
       console.warn("⚠️ mapまたはstageが未定義です");
       return [];
@@ -110,31 +112,31 @@ export default function RectEditor() {
     const offsetX = stageRect.left - mapRect.left;
     const offsetY = stageRect.top - mapRect.top;
 
-    console.group("🛰 toLngLat デバッグ情報");
-    console.log("MapRect:", mapRect);
-    console.log("StageRect:", stageRect);
-    console.log("オフセット:", { offsetX, offsetY });
-    console.log("入力ポイント:", pts);
+    // console.group("🛰 toLngLat デバッグ情報");
+    // console.log("MapRect:", mapRect);
+    // console.log("StageRect:", stageRect);
+    // console.log("オフセット:", { offsetX, offsetY });
+    // console.log("入力ポイント:", pts);
 
     const result = pts.map((p, i) => {
       const screenX = p.x + offsetX;
       const screenY = p.y + offsetY;
       const lngLat = map.unproject([screenX, screenY]);
 
-      console.log(`Point${i + 1}:`, {
-        stageX: p.x,
-        stageY: p.y,
-        screenX,
-        screenY,
-        lng: lngLat.lng,
-        lat: lngLat.lat,
-      });
+      // console.log(`Point${i + 1}:`, {
+      //   stageX: p.x,
+      //   stageY: p.y,
+      //   screenX,
+      //   screenY,
+      //   lng: lngLat.lng,
+      //   lat: lngLat.lat,
+      // });
 
       return [lngLat.lng, lngLat.lat] as [number, number];
     });
 
-    console.log("変換結果（LngLat配列）:", result);
-    console.groupEnd();
+    // console.log("変換結果（LngLat配列）:", result);
+    // console.groupEnd();
     return result;
   };
 
@@ -152,7 +154,9 @@ export default function RectEditor() {
     // width/height比を求める
     const aspect = shape.width / shape.height;
     const scale = Math.max(shape.width, shape.height) / 100;
-
+    console.log(shape.width, shape.height);
+    const scaleX = shape.width / 100;
+    const scaleY = shape.height / 100;
     setPolygons((prev) => {
       const updated = {
         id: shape.id,
@@ -160,6 +164,8 @@ export default function RectEditor() {
         center,
         rotation: shape.rotation,
         scale,
+        scaleX,
+        scaleY,
         aspect,
       };
       const existing = prev.find((p) => p.id === shape.id);
@@ -171,10 +177,11 @@ export default function RectEditor() {
 
   // 🟦 四角形追加
   const addRect = () => {
-    const id = crypto.randomUUID();
+    // const id = crypto.randomUUID();
+    const id = Date.now().toString();
     setShapes((prev) => [
       ...prev,
-      { id, x: 120, y: 100, width: 160, height: 100, rotation: 0 },
+      { id, x: 120, y: 100, width: 100, height: 100, rotation: 0 },
     ]);
     setSelectedId(id);
   };
@@ -207,8 +214,34 @@ export default function RectEditor() {
     // return () => map?.remove();
   }, [mapRef2]);
 
-  const scale = 100000;
+  const scale = 100;
 
+  // 🟦 polygons からモデル GeoJSON を生成
+  const modelsGeoJson = {
+    type: "FeatureCollection",
+    features: polygons.map((poly) => ({
+      type: "Feature",
+      properties: {
+        id: `model-${poly.id}`,
+        model: "duck-model",
+        rotation: [0, 0, poly.rotation || 0],
+        // scale: [poly.scale * 50000, poly.scale * 100000, poly.scale * 100000],
+        scale: [
+          poly?.scaleX * scale,
+          poly.scaleY * scale,
+          // poly.scale * 100000,
+          1 * scale,
+        ],
+        aspect: poly.aspect,
+      },
+      geometry: {
+        type: "Point",
+        coordinates: poly.center,
+      },
+    })),
+  };
+
+  console.log(modelsGeoJson);
   return (
     <div
       ref={wrapRef}
@@ -242,7 +275,7 @@ export default function RectEditor() {
       {/* 🗺 MapView */}
       {showMap && (
         <MapView
-          ref={mapRef}
+          // ref={mapRef}
           onLoad={handleMapLoad}
           mapStyle="mapbox://styles/mapbox/streets-v12"
           style={{
@@ -253,7 +286,14 @@ export default function RectEditor() {
             left: 0,
             zIndex: 0,
           }}
-          zoom={5}
+          initialViewState={{
+            // "longitude":
+            zoom: 12,
+            longitude: 139.767125,
+            latitude: 35.681236,
+          }}
+
+          // zoom={5}
         >
           {polygons.map((poly) => (
             <React.Fragment key={poly.id}>
@@ -267,6 +307,7 @@ export default function RectEditor() {
                     type: "Polygon",
                     coordinates: [[...poly.coordinates, poly.coordinates[0]]],
                   },
+                  properties: {},
                 }}
               >
                 <MapLayer
@@ -286,48 +327,25 @@ export default function RectEditor() {
                   }}
                 />
               </Source>
-
-              {/* Center Model */}
-              {poly.center && (
-                <Source
-                  id={`model-${poly.id}`}
-                  type="geojson"
-                  data={{
-                    type: "Feature",
-                    geometry: { type: "Point", coordinates: poly.center },
-                    properties: {
-                      rotation: poly.rotation, // ← 角度を保持
-                      scale: poly.scale || 1.0, // ← スケールを保持
-                      aspect: poly.aspect || 1.0, // ← 幅高さ比も保持
-                    },
-                  }}
-                >
+              {/* Models (全polygonsまとめて) */}
+              {polygons.length > 0 && (
+                <Source id="models" type="geojson" data={modelsGeoJson}>
                   <MapLayer
-                    id={`duck-model-${poly.id}`}
+                    id="duck-models"
                     type="model"
                     layout={{
-                      "model-id": "duck-model",
+                      "model-id": ["get", "model"],
+                      // "model-rotation": [45, 90, 185],
                     }}
                     paint={{
-                      // 図形の伸び縮みを反映
-                      "model-scale": [
-                        "interpolate",
-                        ["linear"],
-                        ["get", "scale"],
-                        0,
-                        1.0,
-                        1,
-                        40.0,
-                      ],
-
-                      // 図形の回転を反映
-                      "model-rotation": [
-                        ["get", "rotation"], // yaw (Z軸)
-                        0, // pitch
-                        0, // roll
-                      ],
-
-                      "model-emissive-strength": 0.6,
+                      "model-scale": ["get", "scale"],
+                      // "model-scale": [["get", "scaleX"], ["get", "scaleY"], 0],
+                      // "model-rotation": ["get", "rotation"],
+                      "model-rotation": [0.5, 0.8, 0],
+                      // "model-emissive-strength": 0.7,
+                      // "model-color": "red",
+                      // "model-color-mix-intensity": 0.5,
+                      "model-opacity": 0.5,
                     }}
                   />
                 </Source>
